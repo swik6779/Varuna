@@ -5,7 +5,7 @@ Cloud deployment is pending AWS authentication, target region confirmation, the 
 ## Account preparation
 
 1. Configure the desired profile locally and verify `aws sts get-caller-identity --profile <profile>`.
-2. Confirm the target region. The CDK planning default is `ap-south-1`; override with `-c region=<region>` rather than inferring it from the account name.
+2. Confirm the target region. The CDK deployment default is `ap-southeast-2`; override with `-c region=<region>` only when intentionally deploying elsewhere.
 3. In the AWS console, create a Secrets Manager secret such as `aquaagent/groq` containing JSON `{"api_key":"YOUR_KEY"}`. Enter the credential through the console or another protected channel. Its name is the only value needed by CDK. Rotate any key previously exposed in chat.
 4. Connect https://github.com/paramshah2005/Varuna to Amplify after source publication. Amplify builds the `main` branch and `frontend` monorepo directory.
 5. To automate the Amplify Git connection, provide a repository URL through CDK context and an existing secret containing a Git provider connection token as JSON `{"token":"YOUR_TOKEN"}`. The token is resolved server-side through a Secrets Manager dynamic reference. Alternatively connect the generated Amplify app to Git through the AWS console. No Git token belongs in project files or Vite variables.
@@ -15,16 +15,17 @@ Cloud deployment is pending AWS authentication, target region confirmation, the 
 From the root:
 
 ```powershell
+python scripts/deployment_preflight.py --region ap-southeast-2
 .venv/Scripts/python.exe scripts/package_backend.py
 cd infrastructure
 npm ci
 npm run build
-npx cdk synth --quiet -c region=<region> -c groqSecret=aquaagent/groq
-npx cdk bootstrap --profile <profile> -c region=<region>
-npx cdk deploy --profile <profile> -c region=<region> -c groqSecret=aquaagent/groq -c groqModel=openai/gpt-oss-20b -c repository=<git-url> -c repositoryTokenSecret=<existing-secret-name> --outputs-file outputs.json
+npx cdk synth --quiet -c region=ap-southeast-2 -c groqSecret=aquaagent/groq
+npx cdk bootstrap --profile <profile> -c region=ap-southeast-2
+npx cdk deploy --profile <profile> -c region=ap-southeast-2 -c groqSecret=aquaagent/groq -c groqModel=openai/gpt-oss-20b -c repository=<git-url> -c repositoryTokenSecret=<existing-secret-name> --outputs-file outputs.json
 ```
 
-Packaging downloads pinned Python 3.12 Linux x86-64 wheels into an ignored directory; it does not deploy them. Use a supported Python/Node environment and sufficient disk space. The stack intentionally imports an existing Groq secret and grants only the agent Lambda permission to read it. Cloud inference never reads a local key environment variable.
+Packaging downloads pinned Python 3.12 Linux x86-64 wheels into an ignored directory; it does not deploy them. Use a supported Python/Node environment and sufficient disk space. The stack intentionally imports an existing Groq secret and grants only the agent Lambda permission to read it. Cloud inference never reads a local key environment variable. Any key previously present in `backend/.env` must be revoked before deployment; the repository must contain only the placeholder `.env.example`.
 
 The Amplify app is created before Cognito callback/CORS configuration. Frontend variables are placed on the Amplify branch to avoid a CloudFormation dependency cycle. If a custom frontend domain is required, supply `-c frontendOrigin=https://<domain>` and configure that exact HTTPS domain in Amplify before testing login.
 

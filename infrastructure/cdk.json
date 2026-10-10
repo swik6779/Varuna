@@ -1,1 +1,1 @@
-{ "app": "npx tsx app.ts", "context": { "region": "ap-south-1" } }
+{ "app": "npx tsx app.ts", "context": { "region": "ap-southeast-2" } }

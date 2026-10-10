@@ -7,6 +7,6 @@ new AquaAgentStack(app, "AquaAgent", {
     region:
       app.node.tryGetContext("region") ||
       process.env.CDK_DEFAULT_REGION ||
-      "ap-south-1",
+      "ap-southeast-2",
   },
 });

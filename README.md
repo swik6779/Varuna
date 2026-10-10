@@ -106,7 +106,7 @@ A current verified run pauses for your decision. Use **Review response plan** to
 
 ## Deploy and clean up
 
-Follow `docs/DEPLOYMENT.md`. Infrastructure uses Cognito, API Gateway HTTP/WebSocket, seven Python Lambdas, Step Functions Standard, DynamoDB, private S3, an existing Secrets Manager secret, and CloudWatch logs/alarms. Git-connected Amplify Hosting serves the frontend. No AWS resources have been created by local synthesis.
+Follow `docs/DEPLOYMENT.md`. Infrastructure uses Cognito, API Gateway HTTP/WebSocket, seven Python Lambdas, Step Functions Standard, DynamoDB, private S3, an existing Secrets Manager secret, and CloudWatch logs/alarms. Git-connected Amplify Hosting serves the frontend. The deployment target defaults to `ap-southeast-2`; override it explicitly only when a different target is intended. No AWS resources have been created by local synthesis.
 
 `cdk destroy` removes the stack-managed compute and hosting resources. DynamoDB, the S3 evidence bucket, and Cognito are retained deliberately. Delete retained resources separately only when their evidence and identities are no longer required. The existing Groq secret is never owned or deleted by this stack. Remove the Amplify Git connection if it is no longer needed. Stop local development processes separately.
 
