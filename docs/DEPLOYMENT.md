@@ -20,9 +20,9 @@ python scripts/deployment_preflight.py --region ap-southeast-2
 cd infrastructure
 npm ci
 npm run build
-npx cdk synth --quiet -c region=ap-southeast-2 -c groqSecret=aquaagent/groq
+npx cdk synth --quiet -c region=ap-southeast-2 -c branch=sathwik_branch -c groqSecret=aquaagent/groq
 npx cdk bootstrap --profile <profile> -c region=ap-southeast-2
-npx cdk deploy --profile <profile> -c region=ap-southeast-2 -c groqSecret=aquaagent/groq -c groqModel=openai/gpt-oss-20b -c repository=<git-url> -c repositoryTokenSecret=<existing-secret-name> --outputs-file outputs.json
+npx cdk deploy --profile <profile> -c region=ap-southeast-2 -c branch=sathwik_branch -c groqSecret=aquaagent/groq -c groqModel=openai/gpt-oss-20b -c repository=<git-url> -c repositoryTokenSecret=<existing-secret-name> --outputs-file outputs.json
 ```
 
 Packaging downloads pinned Python 3.12 Linux x86-64 wheels into an ignored directory; it does not deploy them. Use a supported Python/Node environment and sufficient disk space. The stack intentionally imports an existing Groq secret and grants only the agent Lambda permission to read it. Cloud inference never reads a local key environment variable. Any key previously present in `backend/.env` must be revoked before deployment; the repository must contain only the placeholder `.env.example`.

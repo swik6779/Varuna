@@ -285,6 +285,9 @@ export class AquaAgentStack extends cdk.Stack {
       string | undefined;
     const repoSecret = this.node.tryGetContext("repositoryTokenSecret") as
       string | undefined;
+    const branchName =
+      (this.node.tryGetContext("branch") as string | undefined) ||
+      "sathwik_branch";
     const app = new amplify.CfnApp(this, "Hosting", {
       name: "aquaagent",
       platform: "WEB",
@@ -307,7 +310,7 @@ export class AquaAgentStack extends cdk.Stack {
     });
     const origin =
       this.node.tryGetContext("frontendOrigin") ||
-      `https://main.${app.attrDefaultDomain}`;
+      `https://${branchName}.${app.attrDefaultDomain}`;
     const client = userPool.addClient("WebOperator", {
       generateSecret: false,
       authFlows: { userSrp: true },
@@ -368,7 +371,7 @@ export class AquaAgentStack extends cdk.Stack {
     ];
     new amplify.CfnBranch(this, "MainBranch", {
       appId: app.attrAppId,
-      branchName: "main",
+      branchName,
       enableAutoBuild: Boolean(repository),
       environmentVariables: vars,
       framework: "React",

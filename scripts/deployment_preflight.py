@@ -33,6 +33,7 @@ def command_version(command: str) -> str | None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--region", default="ap-southeast-2")
+    parser.add_argument("--branch", default="sathwik_branch")
     parser.add_argument(
         "--profile",
         default=os.getenv("AWS_PROFILE"),
@@ -81,6 +82,12 @@ def main() -> int:
             f"infrastructure/cdk.json configures {configured_region!r}, "
             f"expected {args.region!r}"
         )
+    configured_branch = cdk.get("context", {}).get("branch")
+    if configured_branch != args.branch:
+        failures.append(
+            f"infrastructure/cdk.json configures branch {configured_branch!r}, "
+            f"expected {args.branch!r}"
+        )
 
     unsafe_env = ROOT / "backend" / ".env"
     if unsafe_env.exists():
@@ -92,6 +99,7 @@ def main() -> int:
 
     payload = {
         "region": args.region,
+        "branch": args.branch,
         "profile": args.profile,
         "checks": required,
         "failures": failures,
