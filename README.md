@@ -121,6 +121,6 @@ See `docs/ACCOUNTING.md`, `docs/API.md`, `docs/AGENT_PERSISTENCE.md`, `docs/THIR
 Use the following credentials to access the deployed AquaAgent dashboard:
 
 - Email: `admin@gmail.com`
-- Password: `Adminaccess123`
+- Password: `Adminaccess@123`
 
 > This account is provided only for project evaluation. Please do not change the password or account settings.
