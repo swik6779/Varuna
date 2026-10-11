@@ -115,3 +115,12 @@ Follow `docs/DEPLOYMENT.md`. Infrastructure uses Cognito, API Gateway HTTP/WebSo
 This is a synthetic aggregate model, not a hydraulic solver or a trained demand predictor. Losses are deducted exactly once at their explicit denominator/location. Capacity never adds water; scheduled supply is bounded by separately configured available upstream supply and throughput. Storage is finite. Critical demand is included inside total demand. Repair duration and one-crew limits are assumptions, not proof of real-world repair effectiveness. Candidate fit scores are not probabilities. Forecast bands are scenario ranges. Public stations, coordinates, footfall and routes are synthetic; optional GPS is not retained. Environmental guidance is independent of allocation and does not diagnose illness.
 
 See `docs/ACCOUNTING.md`, `docs/API.md`, `docs/AGENT_PERSISTENCE.md`, `docs/THIRD_PARTY.md`, `docs/RELEASE_READINESS.md`, and `docs/SUBMISSION.md` for consequential choices, credits, release boundaries, and AI-tool disclosure. Original project licensing remains the owner's decision; dependency licences must be preserved when distributing bundles.
+
+## Demo Login
+
+Use the following credentials to access the deployed AquaAgent dashboard:
+
+- Email: `admin@gmail.com`
+- Password: `Adminaccess123`
+
+> This account is provided only for project evaluation. Please do not change the password or account settings.
