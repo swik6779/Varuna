@@ -97,6 +97,7 @@ function App() {
     draftRevision = useRef(0),
     decisionKey = useRef(crypto.randomUUID());
   const { run, results, events, error: runError, transport } = useRun(runId);
+  const runStatus = run?.status ?? "idle";
   const applied = scenarios.find((s) => s.scenario_id === selectedId) || null;
   const zone = draft?.zones.find((z) => z.id === zoneId);
   const shownResult = results.approved || results.baseline;
@@ -123,6 +124,27 @@ function App() {
     document.documentElement.dataset.theme = dark ? "dark" : "light";
     localStorage.setItem("aqua_theme", dark ? "dark" : "light");
   }, [dark]);
+  useEffect(() => {
+    if (reduced() || !ready || !authenticated) return;
+    const context = gsap.context(() => {
+      gsap.from(".page-heading > *, .metrics > *", {
+        opacity: 0,
+        y: 22,
+        duration: 0.72,
+        stagger: 0.07,
+        ease: "power3.out",
+      });
+      gsap.from(".overview-grid > *, .conditions", {
+        opacity: 0,
+        y: 28,
+        duration: 0.8,
+        stagger: 0.1,
+        delay: 0.22,
+        ease: "power3.out",
+      });
+    });
+    return () => context.revert();
+  }, [ready, authenticated]);
   useEffect(() => {
     let live = true;
     async function load() {
@@ -182,6 +204,39 @@ function App() {
         { opacity: 1, y: 0, duration: 0.35 },
       );
   }, [ready, displayTotals?.critical_percent, displayTotals?.below_reserve]);
+  useEffect(() => {
+    if (reduced() || !run) return;
+    const context = gsap.context(() => {
+      const timeline = gsap.timeline({ defaults: { ease: "power3.out" } });
+      timeline
+        .fromTo(
+          ".workspace-heading",
+          { opacity: 0.55, y: 8 },
+          { opacity: 1, y: 0, duration: 0.38 },
+        )
+        .fromTo(
+          ".phase-step.current",
+          { scale: 0.96, opacity: 0.45 },
+          { scale: 1, opacity: 1, duration: 0.35 },
+          "<",
+        );
+      if (run.status === "awaiting_approval") {
+        timeline.fromTo(
+          "#response-plan",
+          { opacity: 0.35, y: 22 },
+          { opacity: 1, y: 0, duration: 0.65 },
+        );
+      }
+      if (run.status === "completed") {
+        timeline.fromTo(
+          ".metric-body strong, .plan-outcomes strong",
+          { opacity: 0.25, y: 10 },
+          { opacity: 1, y: 0, duration: 0.55, stagger: 0.07 },
+        );
+      }
+    }, workspace);
+    return () => context.revert();
+  }, [run?.status]);
   function changeDraft(next: Scenario) {
     draftRevision.current++;
     setDraft(next);
@@ -367,7 +422,10 @@ function App() {
       </main>
     );
   return (
-    <div className="app-shell">
+    <div
+      className={`app-shell ${runId ? "command-active" : ""}`}
+      data-run-status={runStatus}
+    >
       <aside className={`sidebar ${mobile ? "mobile-open" : ""}`}>
         <a href="/" className="brand">
           <span className="brand-icon">
@@ -421,20 +479,12 @@ function App() {
             <CircleHelp size={18} />
             Model & data notes
           </button>
-          <div className="operator">
-            <span className="avatar">Y</span>
-            <div>
-              Yoovan
-              <small>
-                {cloudMode ? "Cognito operator" : "Local development operator"}
-              </small>
-            </div>
-            {cloudMode && (
-              <button aria-label="Sign out" onClick={logout}>
-                <LogOut size={17} />
-              </button>
-            )}
-          </div>
+          {cloudMode && (
+            <button className="help-link" onClick={logout}>
+              <LogOut size={17} />
+              Sign out
+            </button>
+          )}
         </div>
       </aside>
       <div className="main-shell">
@@ -469,7 +519,6 @@ function App() {
             >
               {dark ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <span className="avatar small-avatar">Y</span>
           </div>
         </header>
         <main className="main-content">
@@ -483,6 +532,11 @@ function App() {
                 Understand your zones. Test a response. Protect essential
                 supply.
               </p>
+              <div className="command-signals" aria-label="Workspace status">
+                <span><i /> Scenario v{applied?.scenario_version ?? "—"}</span>
+                <span>{applied?.zones.length ?? 0} connected zones</span>
+                <span>{run ? statuses[run.status] || run.status : " Ready to simulate"}</span>
+              </div>
             </div>
             <Button variant="outline" onClick={openHistory}>
               <Clock3 size={16} />
@@ -859,6 +913,31 @@ function App() {
                       ? statuses[run.status] || run.status
                       : "Starting run"}
                 </span>
+              </div>
+              <div className="phase-rail" aria-label="Simulation progress">
+                {[
+                  ["simulating", "Simulate"],
+                  ["investigating", "Investigate"],
+                  ["awaiting_approval", "Review"],
+                  ["completed", "Verify"],
+                ].map(([status, label], index, phases) => {
+                  const currentIndex = phases.findIndex(([value]) =>
+                    value === "simulating"
+                      ? ["queued", "simulating", "baseline_complete"].includes(runStatus)
+                      : value === "investigating"
+                        ? ["investigating", "plan_ready"].includes(runStatus)
+                        : value === runStatus,
+                  );
+                  const activeIndex = currentIndex < 0 && runStatus === "applying" ? 3 : currentIndex;
+                  return (
+                    <span
+                      key={status}
+                      className={`phase-step ${index < activeIndex ? "complete" : ""} ${index === activeIndex ? "current" : ""}`}
+                    >
+                      <i>{index + 1}</i>{label}
+                    </span>
+                  );
+                })}
               </div>
               {!currentRun && run && (
                 <div className="notice approval-guidance" role="status">
@@ -1330,7 +1409,7 @@ function Metric({
           <strong key={value}>{value}</strong>
           <span>{suffix}</span>
         </div>
-        <Accent kind={kind} />
+        <Accent kind={kind} value={value} />
       </div>
       <p>{note}</p>
     </section>

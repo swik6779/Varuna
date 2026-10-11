@@ -1,20 +1,4 @@
 @import "tailwindcss";
-@font-face {
-  font-family: "DM Sans Variable";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 100 900;
-  src: url("@fontsource-variable/dm-sans/files/dm-sans-latin-wght-normal.woff2")
-    format("woff2-variations");
-}
-@font-face {
-  font-family: "Manrope Variable";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 200 800;
-  src: url("@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2")
-    format("woff2-variations");
-}
 :root {
   font-family: "DM Sans Variable", "DM Sans", sans-serif;
   color: #172c49;
@@ -278,43 +262,6 @@ p {
   font-size: 11px;
   padding: 23px 7px;
 }
-.operator {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-top: 1px solid var(--border);
-  padding: 18px 0;
-  font-size: 12px;
-  font-weight: 600;
-}
-.operator small {
-  display: block;
-  font-size: 9px;
-  color: var(--muted);
-  font-weight: 400;
-  margin-top: 4px;
-}
-.operator button {
-  background: transparent;
-  color: var(--muted);
-  margin-left: auto;
-}
-.avatar {
-  background: #e8f0fc;
-  color: #4775b7;
-  font-size: 13px;
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
-  font-weight: 650;
-}
-.small-avatar {
-  width: 30px;
-  height: 30px;
-  font-size: 11px;
-}
 .main-shell {
   margin-left: 237px;
 }
@@ -505,27 +452,6 @@ p {
   height: 70px;
   flex-shrink: 0;
   margin-right: -7px;
-}
-.accent-fallback {
-  height: 100%;
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  justify-content: center;
-  transform: rotate(-15deg);
-}
-.accent-fallback i {
-  display: block;
-  width: 18px;
-  height: 24px;
-  background: #91baff;
-  border: 1px solid #2767df;
-  border-radius: 3px;
-  transform: skewY(15deg);
-}
-.accent-fallback i:nth-child(2) {
-  background: #2867df;
-  transform: translateY(-7px) skewY(15deg);
 }
 .overview-grid {
   display: grid;
@@ -1835,9 +1761,6 @@ summary {
     font-size: 7px;
     letter-spacing: 0.4px;
   }
-  .small-avatar {
-    display: none;
-  }
   .main-content {
     padding: 23px 16px 0;
   }
@@ -2081,6 +2004,7 @@ summary {
     font-size: 8px;
   }
 }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -24,7 +24,7 @@ export function ZoneGraph({
   const last = result?.time_series.at(-1);
   return (
     <svg
-      className="zone-graph"
+      className={`zone-graph ${result ? "network-live" : ""}`}
       viewBox="0 0 580 370"
       role="group"
       aria-label="Abstract six-zone water simulation graph"

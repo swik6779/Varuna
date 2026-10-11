@@ -78,6 +78,11 @@ export function PublicPage() {
   }
   return (
     <main className="public-page">
+      <div className="public-orbit" aria-hidden="true">
+        <span className="orbit-ring orbit-one" />
+        <span className="orbit-ring orbit-two" />
+        <span className="orbit-core"><Droplets /></span>
+      </div>
       <a className="back-link" href="/">
         <ArrowLeft size={16} />
         Operator workspace

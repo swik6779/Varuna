@@ -5,6 +5,9 @@ export default defineConfig({
   workers: 1,
   use: {
     baseURL: process.env.AQUA_E2E_BASE_URL || "http://127.0.0.1:5173",
+    launchOptions: process.env.AQUA_E2E_BROWSER_PATH
+      ? { executablePath: process.env.AQUA_E2E_BROWSER_PATH }
+      : undefined,
     trace: "retain-on-failure",
   },
   projects: [
