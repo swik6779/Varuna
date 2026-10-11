@@ -164,7 +164,13 @@ summary:focus-visible {
 .page-heading p { color: #59645f; font-size: 15px; }
 .breadcrumb { color: #0b5d50; }
 .breadcrumb span { color: #1f6672; }
-.command-signals { color: #5d6964; text-transform: none; }
+.command-signals {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: #5d6964;
+  text-transform: none;
+}
 
 .button {
   color: var(--text);

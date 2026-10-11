@@ -40,12 +40,23 @@ export function StorageChart({
       )?.storage,
     })),
   ];
+  const friendlyLabel = label === "Approved plan" ? "With approved plan" : label;
+  const hasDifference = Boolean(
+    comparison &&
+      points.some(
+        (p) =>
+          p.comparison !== undefined &&
+          p.baseline !== undefined &&
+          Math.abs(p.comparison - p.baseline) > 0.01,
+      ),
+  );
+
   return (
     <div className="chart">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart
           data={points}
-          margin={{ left: 0, right: 20, top: 12, bottom: 0 }}
+          margin={{ left: 0, right: 32, top: 12, bottom: 0 }}
         >
           <defs>
             <linearGradient id="waterFill" x1="0" y1="0" x2="0" y2="1">
@@ -82,17 +93,17 @@ export function StorageChart({
           <Legend wrapperStyle={{ fontSize: 12 }} />
           <Area
             dataKey="baseline"
-            name="Applied baseline"
+            name="Without plan"
             type="monotone"
             stroke="#2867df"
             fill="url(#waterFill)"
             strokeWidth={2}
             isAnimationActive={false}
           />
-          {comparison && (
+          {hasDifference && (
             <Area
               dataKey="comparison"
-              name={label}
+              name={friendlyLabel}
               type="monotone"
               stroke="#20a48b"
               fill="transparent"
@@ -111,12 +122,15 @@ export function FlowCharts({
   comparison,
   zoneId,
   label,
+  chartFilter,
 }: {
   baseline: Result;
   comparison: Result | null;
   zoneId: string;
   label: string;
+  chartFilter?: "demand" | "supply" | "shortage";
 }) {
+  const friendlyLabel = label === "Approved plan" ? "With approved plan" : label;
   const compared = new Map(
     comparison?.time_series.map((row) => [
       row.hour,
@@ -139,9 +153,9 @@ export function FlowCharts({
     };
   });
   const last = points.at(-1)!;
-  const charts = [
+  const allCharts = [
     {
-      id: "demand",
+      id: "demand" as const,
       title: "Demand & delivery",
       description: "Requested and delivered demand · m³/h",
       keys: ["requested", "delivered"],
@@ -150,7 +164,7 @@ export function FlowCharts({
       values: `${last.requested.toFixed(1)} requested, ${last.delivered.toFixed(1)} delivered`,
     },
     {
-      id: "supply",
+      id: "supply" as const,
       title: "External supply",
       description: "Gross inflow before supply losses · m³/h",
       keys: ["supply"],
@@ -159,7 +173,7 @@ export function FlowCharts({
       values: last.supply.toFixed(1),
     },
     {
-      id: "shortage",
+      id: "shortage" as const,
       title: "Unmet demand",
       description: "Requested demand minus delivered demand · m³/h",
       keys: ["shortage"],
@@ -168,83 +182,85 @@ export function FlowCharts({
       values: last.shortage.toFixed(1),
     },
   ];
+
+  const charts = chartFilter ? allCharts.filter((c) => c.id === chartFilter) : allCharts;
+
   return (
     <div
       className="flow-charts"
       aria-label={`Water operating charts for zone ${zoneId}`}
     >
-      {charts.map((chart) => (
-        <section
-          className="card chart-card"
-          key={chart.id}
-          data-testid={`${chart.id}-chart`}
-        >
-          <div className="panel-heading">
-            <div>
-              <h3>
-                {chart.title} · Zone {zoneId}
-              </h3>
-              <p className="small muted">{chart.description}</p>
-            </div>
-          </div>
-          <div
-            className="chart"
-            role="img"
-            aria-label={`${chart.title} over the ${baseline.horizon}-hour horizon, baseline${comparison ? ` compared with ${label}` : ""}`}
+      {charts.map((chart) => {
+        const hasDiff = Boolean(
+          comparison &&
+            points.some((pt) =>
+              chart.comparedKeys.some((ckey, i) => {
+                const bkey = chart.keys[i];
+                const bVal = pt[bkey as keyof typeof pt] as number | undefined;
+                const cVal = pt[ckey as keyof typeof pt] as number | undefined;
+                return bVal !== undefined && cVal !== undefined && Math.abs(bVal - cVal) > 0.01;
+              }),
+            ),
+        );
+
+        return (
+          <section
+            className="card chart-card"
+            key={chart.id}
+            data-testid={`${chart.id}-chart`}
           >
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={points}
-                margin={{ left: 0, right: 12, top: 12, bottom: 0 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="4 4"
-                  vertical={false}
-                  stroke="var(--border)"
-                />
-                <XAxis
-                  dataKey="hour"
-                  tickLine={false}
-                  axisLine={false}
-                  unit=" h"
-                  tick={{ fontSize: 10, fill: "var(--muted)" }}
-                />
-                <YAxis
-                  width={42}
-                  tickLine={false}
-                  axisLine={false}
-                  domain={[0, "auto"]}
-                  tick={{ fontSize: 10, fill: "var(--muted)" }}
-                />
-                <Tooltip
-                  formatter={(value) => `${Number(value).toFixed(2)} m³/h`}
-                  contentStyle={{
-                    background: "var(--card)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 12,
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: 10 }} />
-                {chart.keys.map((key, index) => (
-                  <Line
-                    key={key}
-                    dataKey={key}
-                    name={`Baseline · ${chart.names[index]}`}
-                    stroke={index ? "#7a84a3" : "#2867df"}
-                    strokeWidth={2}
-                    strokeDasharray={index ? "4 3" : undefined}
-                    dot={false}
-                    type="linear"
-                    isAnimationActive={false}
+            <div className="panel-heading">
+              <div>
+                <h3>
+                  {chart.title} · Zone {zoneId}
+                </h3>
+                <p className="small muted">{chart.description}</p>
+              </div>
+            </div>
+            <div
+              className="chart"
+              role="img"
+              aria-label={`${chart.title} over the ${baseline.horizon}-hour horizon, baseline${comparison ? ` compared with ${label}` : ""}`}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={points}
+                  margin={{ left: 0, right: 32, top: 12, bottom: 0 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="4 4"
+                    vertical={false}
+                    stroke="var(--border)"
                   />
-                ))}
-                {comparison &&
-                  chart.comparedKeys.map((key, index) => (
+                  <XAxis
+                    dataKey="hour"
+                    tickLine={false}
+                    axisLine={false}
+                    unit=" h"
+                    tick={{ fontSize: 10, fill: "var(--muted)" }}
+                  />
+                  <YAxis
+                    width={42}
+                    tickLine={false}
+                    axisLine={false}
+                    domain={[0, "auto"]}
+                    tick={{ fontSize: 10, fill: "var(--muted)" }}
+                  />
+                  <Tooltip
+                    formatter={(value) => `${Number(value).toFixed(2)} m³/h`}
+                    contentStyle={{
+                      background: "var(--card)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                    }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 10 }} />
+                  {chart.keys.map((key, index) => (
                     <Line
                       key={key}
                       dataKey={key}
-                      name={`${label} · ${chart.names[index]}`}
-                      stroke={index ? "#82b2a6" : "#20a48b"}
+                      name={`Without plan · ${chart.names[index]}`}
+                      stroke={index ? "#7a84a3" : "#2867df"}
                       strokeWidth={2}
                       strokeDasharray={index ? "4 3" : undefined}
                       dot={false}
@@ -252,57 +268,72 @@ export function FlowCharts({
                       isAnimationActive={false}
                     />
                   ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-          <p className="small muted">
-            At {last.hour} h · Baseline: {chart.values} m³/h
-            {comparison
-              ? ` · ${label}: ${chart.comparedKeys.map((key) => Number(last[key as keyof typeof last]).toFixed(1)).join(" / ")} m³/h`
-              : ""}
-          </p>
-          <details>
-            <summary>View measured values</summary>
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Hour</th>
-                    {chart.names.map((name) => (
-                      <th key={name}>Baseline {name} m³/h</th>
+                  {hasDiff &&
+                    chart.comparedKeys.map((key, index) => (
+                      <Line
+                        key={key}
+                        dataKey={key}
+                        name={`${friendlyLabel} · ${chart.names[index]}`}
+                        stroke={index ? "#82b2a6" : "#20a48b"}
+                        strokeWidth={2}
+                        strokeDasharray={index ? "4 3" : undefined}
+                        dot={false}
+                        type="linear"
+                        isAnimationActive={false}
+                      />
                     ))}
-                    {comparison &&
-                      chart.names.map((name) => (
-                        <th key={name}>
-                          {label} {name} m³/h
-                        </th>
-                      ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {points.map((point) => (
-                    <tr key={point.hour}>
-                      <td>{point.hour}</td>
-                      {[
-                        ...chart.keys,
-                        ...(comparison ? chart.comparedKeys : []),
-                      ].map((key) => (
-                        <td key={key}>
-                          {point[key as keyof typeof point] == null
-                            ? "—"
-                            : Number(point[key as keyof typeof point]).toFixed(
-                                2,
-                              )}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                </LineChart>
+              </ResponsiveContainer>
             </div>
-          </details>
-        </section>
-      ))}
+            <p className="small muted">
+              At {last.hour} h · Without plan: {chart.values} m³/h
+              {hasDiff
+                ? ` · ${friendlyLabel}: ${chart.comparedKeys.map((key) => Number(last[key as keyof typeof last]).toFixed(1)).join(" / ")} m³/h`
+                : ""}
+            </p>
+            <details>
+              <summary>View measured values</summary>
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Hour</th>
+                      {chart.names.map((name) => (
+                        <th key={name}>Without plan {name} m³/h</th>
+                      ))}
+                      {hasDiff &&
+                        chart.names.map((name) => (
+                          <th key={name}>
+                            {friendlyLabel} {name} m³/h
+                          </th>
+                        ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {points.map((point) => (
+                      <tr key={point.hour}>
+                        <td>{point.hour}</td>
+                        {[
+                          ...chart.keys,
+                          ...(hasDiff ? chart.comparedKeys : []),
+                        ].map((key) => (
+                          <td key={key}>
+                            {point[key as keyof typeof point] == null
+                              ? "—"
+                              : Number(point[key as keyof typeof point]).toFixed(
+                                  2,
+                                )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </section>
+        );
+      })}
     </div>
   );
 }

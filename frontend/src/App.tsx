@@ -44,6 +44,15 @@ import { ZoneGraph } from "./components/ZoneGraph";
 import { ZoneEditor, ConnectionEditor } from "./components/Editors";
 import { StorageChart, FlowCharts } from "./components/Charts";
 import { PublicPage } from "./components/PublicPage";
+import { WizardShell } from "./components/wizard/WizardShell";
+import { ExplainTooltip } from "./components/wizard/ExplainTooltip";
+import { Step1Simulate } from "./components/wizard/Step1Simulate";
+import { Step2Investigate } from "./components/wizard/Step2Investigate";
+import { Step3Review } from "./components/wizard/Step3Review";
+import { Step4Verify } from "./components/wizard/Step4Verify";
+import { ZoneDrawer } from "./components/wizard/ZoneDrawer";
+import { WizardPreview } from "./components/wizard/WizardPreview";
+import type { WizardStepId } from "./components/wizard/types";
 const clone = <T,>(v: T): T => structuredClone(v);
 const statuses: Record<string, string> = {
   queued: "Queued",
@@ -92,11 +101,18 @@ function App() {
     [connectionId, setConnectionId] = useState<string | null>(null),
     [historyOpen, setHistoryOpen] = useState(false),
     [savedRuns, setSavedRuns] = useState<Run[]>([]);
+  const isClassic =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("classic") === "1";
+  const [verificationComplete, setVerificationComplete] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [wizardStep, setWizardStep] = useState<WizardStepId>(1);
   const workspace = useRef<HTMLElement>(null),
     upload = useRef<HTMLInputElement>(null),
     draftRevision = useRef(0),
     decisionKey = useRef(crypto.randomUUID());
   const { run, results, events, error: runError, transport } = useRun(runId);
+  const [analyzingZoneId, setAnalyzingZoneId] = useState<string | null>(null);
   const runStatus = run?.status ?? "idle";
   const applied = scenarios.find((s) => s.scenario_id === selectedId) || null;
   const zone = draft?.zones.find((z) => z.id === zoneId);
@@ -247,12 +263,23 @@ function App() {
   }
   function selectZone(id: string) {
     setZoneId(id);
+    setDrawerOpen(true);
     if (!reduced() && document.querySelector(".editor"))
       gsap.fromTo(
         ".editor",
         { opacity: 0.6, x: 8 },
         { opacity: 1, x: 0, duration: 0.25 },
       );
+  }
+  function resetDemo() {
+    setRunId(null);
+    setVerificationComplete(false);
+    setDrawerOpen(false);
+    if (applied) setDraft(clone(applied));
+    setPreview(null);
+    setAnalyzingZoneId(null);
+    setWizardStep(1);
+    setNotice("Demo state cleared. You can run another simulation with the applied scenario.");
   }
   async function action(fn: () => Promise<void>) {
     setBusy(true);
@@ -393,6 +420,7 @@ function App() {
   const dirty =
     draft && applied && JSON.stringify(draft) !== JSON.stringify(applied);
   if (window.location.pathname === "/public") return <PublicPage />;
+  if (window.location.pathname === "/wizard-preview") return <WizardPreview />;
   if (!ready)
     return (
       <main className="loading">
@@ -533,9 +561,11 @@ function App() {
                 supply.
               </p>
               <div className="command-signals" aria-label="Workspace status">
-                <span><i /> Scenario v{applied?.scenario_version ?? "—"}</span>
-                <span>{applied?.zones.length ?? 0} connected zones</span>
-                <span>{run ? statuses[run.status] || run.status : " Ready to simulate"}</span>
+                <span>Scenario v{applied?.scenario_version ?? "—"} · {applied?.zones.length ?? 0} connected zones</span>
+                <span className="badge-pill">
+                  <span className={run && !["completed", "infeasible", "failed", "rejected"].includes(run.status) ? "pulse-dot" : ""} />
+                  {run ? statuses[run.status] || run.status : "Ready to simulate"}
+                </span>
               </div>
             </div>
             <Button variant="outline" onClick={openHistory}>
@@ -620,7 +650,9 @@ function App() {
               kind="stations"
             />
           </div>
-          <div className="overview-grid">
+          {isClassic ? (
+            <>
+              <div className="overview-grid">
             <section id="scenario-setup" className="card setup-card">
               <div className="panel-heading">
                 <div className="title-icon">
@@ -1315,6 +1347,139 @@ function App() {
               </section>
             </section>
           )}
+            </>
+          ) : (
+            <>
+              <WizardShell
+                scenarioId={applied?.scenario_id ?? selectedId}
+                scenarioVersion={applied?.scenario_version ?? 1}
+                horizon={horizon}
+                modelVersion={shownResult?.model_version ?? "Awaiting model output"}
+                run={run}
+                results={results}
+                runStatus={runStatus}
+                events={events}
+                transport={`${cloudMode ? "Cloud backend" : "Local backend"} · ${transport}`}
+                verificationComplete={verificationComplete}
+                onResetDemo={resetDemo}
+                activeStep={wizardStep}
+                onSelectStep={setWizardStep}
+                onZoneAnalyze={(zid) => setAnalyzingZoneId(zid)}
+                renderStep1={() => (
+                  <Step1Simulate
+                    scenarios={scenarios}
+                    selectedScenarioId={selectedId}
+                    onSelectScenario={(id) => {
+                      resetDemo();
+                      setSelectedId(id);
+                      setPreview(null);
+                    }}
+                    horizon={horizon}
+                    onSetHorizon={(h) => {
+                      setHorizon(h);
+                      setPreview(null);
+                    }}
+                    agents={agents}
+                    onSetAgents={setAgents}
+                    onRunSimulation={start}
+                    busy={busy}
+                    run={run}
+                    results={{
+                      baseline: currentRun ? results.baseline : null,
+                      approved: currentRun ? results.approved : null,
+                    }}
+                    appliedScenario={applied}
+                    selectedZoneId={zoneId}
+                    onSelectZone={selectZone}
+                    onInvestigate={() => setWizardStep(2)}
+                  />
+                )}
+                renderStep2={({ displayedEvents, streamStatus, isComplete, hasPlanReady }) => (
+                  <Step2Investigate
+                    events={displayedEvents}
+                    streamStatus={streamStatus}
+                    isComplete={isComplete}
+                    hasPlanReady={hasPlanReady}
+                    onZoneAnalyze={(zid) => setAnalyzingZoneId(zid)}
+                    miniTwin={
+                      applied ? (
+                        <ZoneGraph
+                          scenario={applied}
+                          result={results.baseline}
+                          selected={analyzingZoneId || zoneId}
+                          onSelect={selectZone}
+                          onConnection={() => {}}
+                        />
+                      ) : null
+                    }
+                    onReviewPlan={() => setWizardStep(3)}
+                  />
+                )}
+                renderStep3={() => (
+                  <Step3Review
+                    plan={results.plan}
+                    agent={results.agent}
+                    canReject={!busy && Boolean(currentRun) && run?.status === "awaiting_approval"}
+                    scenario={applied}
+                    baselineResult={results.baseline}
+                    run={run}
+                    onApprove={() => decision("approve")}
+                    onReject={() => decision("reject")}
+                    onOpenReport={report}
+                    busy={busy}
+                    canApprove={
+                      !busy &&
+                      Boolean(currentRun) &&
+                      Boolean(results.plan?.feasible) &&
+                      run?.status === "awaiting_approval"
+                    }
+                  />
+                )}
+                renderStep4={() => (
+                  <Step4Verify
+                    events={events}
+                    onVerificationComplete={() => setVerificationComplete(true)}
+                    onSelectZone={selectZone}
+                    baselineResult={results.baseline}
+                    approvedResult={results.approved}
+                    plan={results.plan}
+                    scenario={applied}
+                    run={run}
+                    onResetDemo={resetDemo}
+                    onOpenReport={report}
+                    onImportJson={() => upload.current?.click()}
+                  />
+                )}
+              />
+              <ZoneDrawer
+                zone={zone ?? null}
+                scenario={draft}
+                isOpen={drawerOpen}
+                onClose={() => setDrawerOpen(false)}
+                onChange={(z) =>
+                  draft &&
+                  changeDraft({
+                    ...draft,
+                    zones: draft.zones.map((old) => (old.id === z.id ? z : old)),
+                  })
+                }
+                onStation={(id, open) =>
+                  draft &&
+                  changeDraft({
+                    ...draft,
+                    stations: draft.stations.map((s) =>
+                      s.id === id ? { ...s, open } : s,
+                    ),
+                  })
+                }
+                onPreview={previewDraft}
+                onApply={applyDraft}
+                onReset={resetDraft}
+                busy={busy}
+                isLocked={Boolean(run && ["completed", "verified", "applying"].includes(run.status))}
+              />
+            </>
+          )}
           <footer className="page-footer">
             <span>
               <Droplets size={14} />
@@ -1326,6 +1491,17 @@ function App() {
           </footer>
         </main>
       </div>
+      <input
+        ref={upload}
+        type="file"
+        accept="application/json,.json"
+        hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) importFile(file);
+          e.target.value = "";
+        }}
+      />
       <ConnectionEditor
         connection={
           draft?.connections.find((c) => c.id === connectionId) ?? null
@@ -1402,11 +1578,12 @@ function Metric({
     <section className="card metric">
       <div className="metric-title">
         {icon}
-        {title}
+        <span>{title}</span>
+        <ExplainTooltip parameter={title} />
       </div>
       <div className="metric-body">
         <div>
-          <strong key={value}>{value}</strong>
+          <strong key={value} className="tabular-nums">{value}</strong>
           <span>{suffix}</span>
         </div>
         <Accent kind={kind} value={value} />

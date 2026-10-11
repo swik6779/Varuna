@@ -14,12 +14,14 @@ export function ZoneGraph({
   selected,
   onSelect,
   onConnection,
+  highlightZoneId,
 }: {
   scenario: Scenario;
   result: Result | null;
   selected: string;
   onSelect: (id: string) => void;
   onConnection: (c: Connection) => void;
+  highlightZoneId?: string | null;
 }) {
   const last = result?.time_series.at(-1);
   return (
@@ -73,6 +75,12 @@ export function ZoneGraph({
                   ? "edge-line"
                   : "edge-line closed"
               }
+              style={{
+                strokeWidth:
+                  flow && flow.rate > 0
+                    ? Math.max(2, Math.min(6, (flow.rate / 15) * 4))
+                    : undefined,
+              }}
             />
             <rect
               x={(a[0] + b[0]) / 2 - 30}
@@ -96,11 +104,12 @@ export function ZoneGraph({
         const p = positions[z.id],
           state = last?.zones.find((s) => s.id === z.id);
         const ratio = (state?.storage ?? z.storage) / z.storage_capacity;
+        const isCritical = state?.condition === "Critical";
         return (
           <g
             key={z.id}
             transform={`translate(${p[0] - 52},${p[1] - 41})`}
-            className={`zone-node ${selected === z.id ? "selected" : ""}`}
+            className={`zone-node ${selected === z.id ? "selected" : ""} ${highlightZoneId === z.id ? "zone-analyzing" : ""} ${isCritical ? "is-critical-zone" : ""}`}
             role="button"
             tabIndex={0}
             aria-label={`Select zone ${z.id}, ${z.name}`}
@@ -112,13 +121,23 @@ export function ZoneGraph({
               }
             }}
           >
+            {isCritical && (
+              <rect
+                x="-3"
+                y="-3"
+                width="110"
+                height="88"
+                rx="18"
+                className="critical-pulse-ring"
+              />
+            )}
             <rect width="104" height="82" rx="15" className="node-bg" />
             <circle
               cx="18"
               cy="19"
               r="4"
               fill={
-                state?.condition === "Critical"
+                isCritical
                   ? "#e35b56"
                   : state?.condition === "Stressed"
                     ? "#eaa64a"
