@@ -1,3 +1,4 @@
+import * as Dialog from "@radix-ui/react-dialog";
 import React, { useState, useEffect } from "react";
 import { X, ChevronDown, ChevronRight, ShieldAlert, Sparkles, RefreshCw, Check } from "lucide-react";
 import type { Zone, Scenario } from "../../types";
@@ -16,6 +17,7 @@ export interface ZoneDrawerProps {
   onReset: () => void;
   busy: boolean;
   isLocked?: boolean;
+  preview?: { draft: import("../../types").Result; applied: import("../../types").Result } | null;
 }
 
 interface FieldConfig {
@@ -163,18 +165,9 @@ export function ZoneDrawer({
   onReset,
   busy,
   isLocked = false,
+  preview,
 }: ZoneDrawerProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
-
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape" && isOpen) {
-        onClose();
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
 
   if (!isOpen || !zone) return null;
 
@@ -229,20 +222,21 @@ export function ZoneDrawer({
   };
 
   return (
-    <>
-      <div className="drawer-backdrop" onClick={onClose} aria-hidden="true" />
-      <aside
+    <Dialog.Root open={isOpen} onOpenChange={open => { if (!open) onClose(); }}>
+      <Dialog.Portal>
+      <Dialog.Overlay className="drawer-backdrop" />
+      <Dialog.Content
         className="zone-drawer"
-        role="dialog"
-        aria-modal="true"
+        aria-describedby="drawer-description"
+        onEscapeKeyDown={e => { if (document.querySelector('[role="tooltip"]')) e.preventDefault(); }}
         aria-label={`Edit Zone ${zone.id}`}
       >
         <div className="drawer-header">
           <div>
             <span className="eyebrow">EDIT ZONE PARAMETERS</span>
-            <h3 className="drawer-title">
+            <Dialog.Title className="drawer-title">
               Zone {zone.id} · {zone.name}
-            </h3>
+            </Dialog.Title>
           </div>
           <button
             type="button"
@@ -254,7 +248,7 @@ export function ZoneDrawer({
           </button>
         </div>
 
-        <div className="drawer-notice-box">
+        <div className="drawer-notice-box" id="drawer-description">
           <p className="small muted">
             <strong>Isolated draft preview.</strong> The applied scenario is unchanged until changes are applied.
           </p>
@@ -264,12 +258,16 @@ export function ZoneDrawer({
           {isLocked && (
             <p className="small warning-text" style={{ marginTop: 6 }}>
               <ShieldAlert size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} />
-              Plan v1 is approved. Edits are locked until you click <strong>Reset demo</strong>.
+              This run is approved. Edits are locked until you click <strong>Reset demo</strong>.
             </p>
           )}
         </div>
 
         <div className="drawer-scroll-body">
+          {preview && <section className="drawer-section"><h4>Preview effects · Zone {zone.id}</h4>
+            <p className="small muted">Isolated draft preview. The applied scenario is unchanged.</p>
+            <p>Ending storage: {number(preview.applied.time_series.at(-1)?.zones.find(z => z.id === zone.id)?.storage)} m³ applied → {number(preview.draft.time_series.at(-1)?.zones.find(z => z.id === zone.id)?.storage)} m³ draft</p>
+          </section>}
           {/* Basic Section (Open) */}
           <section className="drawer-section">
             <h4 className="drawer-section-heading">Basic Parameters</h4>
@@ -282,6 +280,7 @@ export function ZoneDrawer({
           {stationsInZone.length > 0 && (
             <section className="drawer-section">
               <h4 className="drawer-section-heading">Cooling Centers & Water Points</h4>
+              <p className="small muted">Station closure is independent of zone supply. Hours, access, water availability and occupancy also determine eligibility.</p>
               {stationsInZone.map((s) => (
                 <div key={s.id} className="drawer-station-row">
                   <div>
@@ -352,7 +351,8 @@ export function ZoneDrawer({
             Reset draft
           </button>
         </div>
-      </aside>
-    </>
+      </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

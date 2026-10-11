@@ -104,6 +104,7 @@ function App() {
   const isClassic =
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("classic") === "1";
+  const [notesOpen, setNotesOpen] = useState(false);
   const [verificationComplete, setVerificationComplete] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState<WizardStepId>(1);
@@ -497,11 +498,7 @@ function App() {
             </a>
           </div>
           <button
-            onClick={() =>
-              setNotice(
-                "Model: aggregate synthetic neighborhoods, 15-minute steps, scenario forecasts. No hydraulics, pipe-level localization or personal diagnosis.",
-              )
-            }
+            onClick={() => setNotesOpen(true)}
             className="help-link"
           >
             <CircleHelp size={18} />
@@ -1455,6 +1452,7 @@ function App() {
                 zone={zone ?? null}
                 scenario={draft}
                 isOpen={drawerOpen}
+                preview={preview}
                 onClose={() => setDrawerOpen(false)}
                 onChange={(z) =>
                   draft &&
@@ -1491,6 +1489,11 @@ function App() {
           </footer>
         </main>
       </div>
+      <Modal open={notesOpen} onOpenChange={setNotesOpen} title="Model & data notes" description="How to interpret this simulation">
+        <p>Aggregate synthetic neighborhoods, 15-minute simulation steps and explicit scenario forecasts. No hydraulics, pipe-level localization or personal diagnosis.</p>
+        <p>Temperature and humidity are context. Demand changes through the explicit demand multiplier. Supply losses and stored water come from the applied scenario.</p>
+        <p>{cloudMode ? "AWS backend configured" : "Local backend · AWS deployment pending"}</p>
+      </Modal>
       <input
         ref={upload}
         type="file"

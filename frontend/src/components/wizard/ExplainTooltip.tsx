@@ -1,7 +1,10 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useId } from "react";
 import { Info } from "lucide-react";
 
 export const PARAMETER_EXPLANATIONS: Record<string, string> = {
+  Temperature: "Ambient temperature in degrees Celsius. Context only: demand changes through the explicit multiplier.",
+  Humidity: "Relative humidity as a percentage. Environmental context, not an automatic demand adjustment.",
+  "Storage capacity": "Maximum tank volume. Increasing capacity adds no water.",
   Demand: "How much water people in this zone want to use each hour.",
   "Demand multiplier": "Heatwave effect. 1.45× means people use 45% more water than usual.",
   "Scheduled supply": "Water the network has planned to send to this zone each hour.",
@@ -42,6 +45,7 @@ export function ExplainTooltip({
   children,
   className = "",
 }: ExplainTooltipProps) {
+  const tooltipId = useId();
   const explanation = text || (parameter ? PARAMETER_EXPLANATIONS[parameter] : "");
   const [visible, setVisible] = useState(false);
   const containerRef = useRef<HTMLSpanElement>(null);
@@ -77,6 +81,7 @@ export function ExplainTooltip({
         className="explain-tooltip-trigger"
         aria-label={`About ${labelText}`}
         aria-expanded={visible}
+        aria-describedby={visible ? tooltipId : undefined}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -87,6 +92,7 @@ export function ExplainTooltip({
       </button>
       {visible && (
         <span
+          id={tooltipId}
           role="tooltip"
           className="explain-tooltip-bubble"
           aria-live="polite"
