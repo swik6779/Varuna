@@ -47,7 +47,7 @@ export function StorageChart({
         (p) =>
           p.comparison !== undefined &&
           p.baseline !== undefined &&
-          Math.abs(p.comparison - p.baseline) > 0.01,
+          Math.abs(p.comparison - p.baseline) > 1e-9,
       ),
   );
 
@@ -198,7 +198,7 @@ export function FlowCharts({
                 const bkey = chart.keys[i];
                 const bVal = pt[bkey as keyof typeof pt] as number | undefined;
                 const cVal = pt[ckey as keyof typeof pt] as number | undefined;
-                return bVal !== undefined && cVal !== undefined && Math.abs(bVal - cVal) > 0.01;
+                return bVal !== undefined && cVal !== undefined && Math.abs(bVal - cVal) > 1e-9;
               }),
             ),
         );
@@ -268,7 +268,7 @@ export function FlowCharts({
                       isAnimationActive={false}
                     />
                   ))}
-                  {hasDiff &&
+                  {comparison &&
                     chart.comparedKeys.map((key, index) => (
                       <Line
                         key={key}
@@ -287,7 +287,7 @@ export function FlowCharts({
             </div>
             <p className="small muted">
               At {last.hour} h · Without plan: {chart.values} m³/h
-              {hasDiff
+              {comparison
                 ? ` · ${friendlyLabel}: ${chart.comparedKeys.map((key) => Number(last[key as keyof typeof last]).toFixed(1)).join(" / ")} m³/h`
                 : ""}
             </p>
@@ -301,7 +301,7 @@ export function FlowCharts({
                       {chart.names.map((name) => (
                         <th key={name}>Without plan {name} m³/h</th>
                       ))}
-                      {hasDiff &&
+                      {comparison &&
                         chart.names.map((name) => (
                           <th key={name}>
                             {friendlyLabel} {name} m³/h

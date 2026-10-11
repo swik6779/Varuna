@@ -51,7 +51,7 @@ import { Step2Investigate } from "./components/wizard/Step2Investigate";
 import { Step3Review } from "./components/wizard/Step3Review";
 import { Step4Verify } from "./components/wizard/Step4Verify";
 import { ZoneDrawer } from "./components/wizard/ZoneDrawer";
-import { WizardPreview } from "./components/wizard/WizardPreview";
+
 import type { WizardStepId } from "./components/wizard/types";
 const clone = <T,>(v: T): T => structuredClone(v);
 const statuses: Record<string, string> = {
@@ -272,7 +272,7 @@ function App() {
         { opacity: 1, x: 0, duration: 0.25 },
       );
   }
-  function resetDemo() {
+  function clearDemo() {
     setRunId(null);
     setVerificationComplete(false);
     setDrawerOpen(false);
@@ -281,6 +281,10 @@ function App() {
     setAnalyzingZoneId(null);
     setWizardStep(1);
     setNotice("Demo state cleared. You can run another simulation with the applied scenario.");
+  }
+  function resetDemo() {
+    clearDemo();
+    void start();
   }
   async function action(fn: () => Promise<void>) {
     setBusy(true);
@@ -308,6 +312,8 @@ function App() {
       );
       decisionKey.current = crypto.randomUUID();
       setPreview(null);
+      setWizardStep(1);
+      setVerificationComplete(false);
       setRunId(response.run_id);
       setNavId("lab");
       setNotice(
@@ -339,6 +345,7 @@ function App() {
       setScenarios((prev) =>
         prev.map((s) => (s.scenario_id === next.scenario_id ? next : s)),
       );
+      if (!isClassic) clearDemo();
       setNotice(
         `Applied version ${next.scenario_version}. Previous approval is invalidated; run again from edited initial conditions.`,
       );
@@ -395,6 +402,7 @@ function App() {
         ...prev.filter((s) => s.scenario_id !== next.scenario_id),
         next,
       ]);
+      if (!isClassic) clearDemo();
       setSelectedId(next.scenario_id);
       setNotice(
         "Scenario imported and validated by the backend. Initial conditions saved as a new version.",
@@ -421,7 +429,7 @@ function App() {
   const dirty =
     draft && applied && JSON.stringify(draft) !== JSON.stringify(applied);
   if (window.location.pathname === "/public") return <PublicPage />;
-  if (window.location.pathname === "/wizard-preview") return <WizardPreview />;
+
   if (!ready)
     return (
       <main className="loading">
@@ -616,33 +624,31 @@ function App() {
               value={
                 applied
                   ? String(
-                      applied.stations.filter(
-                        (s) =>
-                          s.type === "cooling" &&
-                          s.open &&
-                          s.accessible &&
-                          s.water_available &&
-                          s.occupancy < s.capacity &&
-                          Number(
-                            new Intl.DateTimeFormat("en-GB", {
-                              hour: "2-digit",
-                              hourCycle: "h23",
-                              timeZone: s.timezone,
-                            }).format(new Date()),
-                          ) >= s.opens &&
-                          Number(
-                            new Intl.DateTimeFormat("en-GB", {
-                              hour: "2-digit",
-                              hourCycle: "h23",
-                              timeZone: s.timezone,
-                            }).format(new Date()),
-                          ) < s.closes,
-                      ).length,
+                      applied.stations.filter((s) => {
+                        if (
+                          s.type !== "cooling" ||
+                          !s.open ||
+                          !s.accessible ||
+                          !s.water_available ||
+                          s.occupancy >= s.capacity
+                        )
+                          return false;
+                        const hour = Number(
+                          new Intl.DateTimeFormat("en-GB", {
+                            hour: "2-digit",
+                            hourCycle: "h23",
+                            timeZone: s.timezone,
+                          }).format(new Date()),
+                        );
+                        return s.opens < s.closes
+                          ? hour >= s.opens && hour < s.closes
+                          : hour >= s.opens || hour < s.closes;
+                      }).length,
                     )
                   : "—"
               }
               suffix="demo stations"
-              note="Status, hours, access and capacity checked"
+              note="24/7 relief during extreme heat; access and capacity checked"
               icon={<MapPinIcon />}
               kind="stations"
             />
@@ -1071,7 +1077,7 @@ function App() {
                               : number(selectedState.time_to_reserve)}{" "}
                             <small>
                               {selectedState.time_to_reserve === null
-                                ? "not meaningful"
+                                ? zone && zone.storage < zone.reserve ? `Already below reserve at start (${number(zone.storage)} of ${number(zone.reserve)} m³)` : "Reserve held"
                                 : "hours"}
                             </small>
                           </strong>
@@ -1349,7 +1355,7 @@ function App() {
             <>
               <WizardShell
                 scenarioId={applied?.scenario_id ?? selectedId}
-                scenarioVersion={applied?.scenario_version ?? 1}
+                scenarioVersion={run?.scenario_version ?? applied?.scenario_version ?? 1}
                 horizon={horizon}
                 modelVersion={shownResult?.model_version ?? "Awaiting model output"}
                 run={run}
@@ -1367,12 +1373,13 @@ function App() {
                     scenarios={scenarios}
                     selectedScenarioId={selectedId}
                     onSelectScenario={(id) => {
-                      resetDemo();
+                      clearDemo();
                       setSelectedId(id);
                       setPreview(null);
                     }}
                     horizon={horizon}
                     onSetHorizon={(h) => {
+                      if (runId) clearDemo();
                       setHorizon(h);
                       setPreview(null);
                     }}
@@ -1382,10 +1389,11 @@ function App() {
                     busy={busy}
                     run={run}
                     results={{
-                      baseline: currentRun ? results.baseline : null,
-                      approved: currentRun ? results.approved : null,
+                      baseline: results.baseline,
+                      approved: results.approved,
                     }}
-                    appliedScenario={applied}
+                    preview={preview}
+                    appliedScenario={results.baseline ? results.scenario || applied : applied}
                     selectedZoneId={zoneId}
                     onSelectZone={selectZone}
                     onInvestigate={() => setWizardStep(2)}
@@ -1404,8 +1412,8 @@ function App() {
                           scenario={applied}
                           result={results.baseline}
                           selected={analyzingZoneId || zoneId}
+                          highlightZoneId={analyzingZoneId}
                           onSelect={selectZone}
-                          onConnection={() => {}}
                         />
                       ) : null
                     }
@@ -1417,7 +1425,7 @@ function App() {
                     plan={results.plan}
                     agent={results.agent}
                     canReject={!busy && Boolean(currentRun) && run?.status === "awaiting_approval"}
-                    scenario={applied}
+                    scenario={results.scenario || applied}
                     baselineResult={results.baseline}
                     run={run}
                     onApprove={() => decision("approve")}
@@ -1440,7 +1448,7 @@ function App() {
                     baselineResult={results.baseline}
                     approvedResult={results.approved}
                     plan={results.plan}
-                    scenario={applied}
+                    scenario={results.scenario || applied}
                     run={run}
                     onResetDemo={resetDemo}
                     onOpenReport={report}
@@ -1533,6 +1541,10 @@ function App() {
                 key={r.run_id}
                 onClick={() => {
                   setSelectedId(r.scenario_id);
+                  setHorizon(r.horizon);
+                  setWizardStep(r.status === "completed" ? 4 : 1);
+                  setVerificationComplete(false);
+                  setDrawerOpen(false);
                   setRunId(r.run_id);
                   setHistoryOpen(false);
                 }}
@@ -1577,6 +1589,27 @@ function Metric({
   icon: React.ReactNode;
   kind: string;
 }) {
+  const [animatedValue, setAnimatedValue] = useState(value);
+  const previousValue = useRef(0);
+  useEffect(() => {
+    const target = Number(value);
+    if (kind !== "reserve" || !Number.isFinite(target) || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setAnimatedValue(value);
+      previousValue.current = Number.isFinite(target) ? target : 0;
+      return;
+    }
+    const from = previousValue.current;
+    const started = performance.now();
+    let frame = 0;
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - started) / 450);
+      setAnimatedValue(String(Math.round(from + (target - from) * progress)));
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    previousValue.current = target;
+    return () => cancelAnimationFrame(frame);
+  }, [value, kind]);
   return (
     <section className="card metric">
       <div className="metric-title">
@@ -1586,7 +1619,7 @@ function Metric({
       </div>
       <div className="metric-body">
         <div>
-          <strong key={value} className="tabular-nums">{value}</strong>
+          <strong key={value} className="tabular-nums">{animatedValue}</strong>
           <span>{suffix}</span>
         </div>
         <Accent kind={kind} value={value} />

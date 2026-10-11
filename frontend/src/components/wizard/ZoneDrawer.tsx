@@ -286,7 +286,7 @@ export function ZoneDrawer({
                   <div>
                     <strong>{s.name}</strong>
                     <p className="small muted">
-                      {s.type === "cooling" ? "Cooling center" : "Emergency water point"} · Capacity {s.capacity}
+                      {s.type === "cooling" ? "Cooling center · 24/7 emergency heat relief" : "Emergency water point · 06:00 – 22:00"} · Capacity {s.capacity}
                     </p>
                   </div>
                   <button

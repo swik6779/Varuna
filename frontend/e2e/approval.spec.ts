@@ -17,7 +17,7 @@ test("stale plans explain rerunning and current plans lead to approval controls"
   const created = await request.post("/api/scenarios", { data: scenario });
   expect(created.status()).toBe(201);
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
+  await page.goto("/?classic=1");
   await page.getByLabel("Choose a scenario").selectOption(scenario.scenario_id);
   await page
     .getByRole("switch", { name: "Agents active", exact: true })

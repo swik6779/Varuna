@@ -325,6 +325,25 @@ def dispatch(method, path, owner, body, query, headers, store):
             return 200, store.object_get(meta["plan_key"])
         if method == "GET" and resource == "report":
             if not meta.get("report_key"):
+                if meta.get("baseline_key"):
+                    report = dict(
+                        run_id=run_id,
+                        scenario_id=meta["scenario_id"],
+                        scenario_version=meta["scenario_version"],
+                        baseline=store.object_get(meta["baseline_key"]),
+                        plan=store.object_get(meta["plan_key"]) if meta.get("plan_key") else None,
+                        approved=store.object_get(meta["result_key"]) if meta.get("result_key") else None,
+                        agent=store.object_get(meta["agent_key"]) if meta.get("agent_key") else None,
+                        synthetic=True,
+                        limitations=[
+                            "Aggregate zone model; no hydraulics or pipe-level localization",
+                            "Scenario forecasts are not calibrated predictions",
+                            "Public facilities and walking routes are synthetic",
+                            "Supply restoration depends on configured availability assumptions",
+                        ],
+                        events=store.list(run_pk, "EVENT#"),
+                    )
+                    return 200, dict(report=report)
                 raise Conflict("Report is not ready")
             if store.cloud:
                 url = store.s3.generate_presigned_url(

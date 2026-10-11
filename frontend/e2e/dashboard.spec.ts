@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 test("run reveal, editing, exact approval and persisted evidence", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?classic=1");
   await expect(page.getByText("Water resilience, in focus.")).toBeVisible();
   await expect(page.getByTestId("simulation-map")).toHaveCount(0);
   await page
@@ -87,7 +87,7 @@ test("public station route and manual location fallback", async ({ page }) => {
 });
 test("reduced motion and keyboard graph selection", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
+  await page.goto("/?classic=1");
   await page
     .getByRole("button", { name: "Run Simulation", exact: true })
     .click();

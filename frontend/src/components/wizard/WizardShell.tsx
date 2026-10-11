@@ -76,18 +76,6 @@ export function WizardShell({
   };
   const [urlPreviewRail, setUrlPreviewRail] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const s = Number(params.get("wizard_step"));
-      if ([1, 2, 3, 4].includes(s)) {
-        setActiveStep(s as WizardStepId);
-      }
-      const pr = params.get("preview_rail");
-      if (pr) setUrlPreviewRail(pr);
-    }
-  }, []);
-
   // Hook for live / paced event streaming
   const { displayedEvents, streamStatus, isComplete, resetStream } = useRunEvents(
     run?.run_id ?? null,
@@ -153,7 +141,7 @@ export function WizardShell({
     } else if (isComplete) {
       states[2] = "completed";
     } else {
-      states[2] = "active";
+      states[2] = "available";
     }
 
     // Step 3
@@ -200,7 +188,7 @@ export function WizardShell({
   const stepSummaries: Record<WizardStepId, string | undefined> = useMemo(() => {
     // Determine critical zones count from results
     const baselineZones = results.baseline?.time_series?.at(-1)?.zones || [];
-    const criticalCount = baselineZones.filter((z) => z.condition === "Critical").length;
+    const criticalCount = results.baseline?.totals.below_reserve ?? 0;
     const criticalSummary = criticalCount > 0 ? `${criticalCount} zones critical` : "Baseline ready";
 
     return {

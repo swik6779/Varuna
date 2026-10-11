@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-test("WebGL fallback, schema errors, connection edits and JSON import", async ({
+test("CSS accents without WebGL, schema errors, connection edits and JSON import", async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -14,8 +14,8 @@ test("WebGL fallback, schema errors, connection edits and JSON import", async ({
       >);
     } as typeof original;
   });
-  await page.goto("/");
-  await expect(page.locator(".accent-fallback").first()).toBeVisible();
+  await page.goto("/?classic=1");
+  await expect(page.locator(".metric-sculpture").first()).toBeVisible();
   await page
     .getByRole("switch", { name: "Agents active", exact: true })
     .uncheck();
@@ -66,7 +66,7 @@ test("WebGL fallback, schema errors, connection edits and JSON import", async ({
 test("infeasible plans cannot be approved and station closure reroutes", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?classic=1");
   await page
     .getByRole("combobox", { name: "Choose a scenario" })
     .selectOption("infeasible");

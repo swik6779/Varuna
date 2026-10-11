@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
-import { Check, X, FileText, ChevronDown, ChevronRight, ShieldCheck, Droplet, ArrowUpRight } from "lucide-react";
+import { Check, X, FileText, ChevronDown, ChevronRight, ShieldCheck, Droplet, ArrowUpRight, Maximize2, Minimize2 } from "lucide-react";
 import type { Plan, Scenario, Result, Run } from "../../types";
+import { ZoneGraph } from "../ZoneGraph";
 import { ExplainTooltip } from "./ExplainTooltip";
 import { number } from "../../lib/api";
 
@@ -33,6 +34,8 @@ export function Step3Review({
 }: Step3ReviewProps) {
   const [candidatesOpen, setCandidatesOpen] = useState(false);
   const [evidenceOpen, setEvidenceOpen] = useState(false);
+  const [mapMaximized, setMapMaximized] = useState(false);
+  const [selectedZoneId, setSelectedZoneId] = useState("E");
 
   // Compute table rows from scenario baseline supply and plan proposed supply
   const planRows = useMemo(() => {
@@ -133,6 +136,73 @@ export function Step3Review({
       {plan.actions.some(a => a.type !== "supply") && <div className="card"><h4>Other exact actions</h4>{plan.actions.filter(a => a.type !== "supply").map((a, i) => <p key={i}>{a.type} · {a.target}: {a.value} at {a.at_hour} h</p>)}</div>}
       {plan.violations.length > 0 && <p className="error">{plan.violations.join(" · ")}</p>}
       <p className="small muted">{plan.mode} · {plan.uncertainty}</p>
+      {/* Network Digital Twin in Review Tab with Maximize Option */}
+      {scenario && baselineResult && (
+        <div className="step3-twin-card card">
+          <div className="panel-heading">
+            <div>
+              <span className="eyebrow">TOPOLOGY & CONSTRAINTS</span>
+              <h3 className="section-title">Network Digital Twin</h3>
+              <p className="small muted">
+                Inspect physical topology and flow rates under proposed adjustments.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="outline-button maximize-map-btn"
+              onClick={() => setMapMaximized(true)}
+              aria-label="Maximize map"
+            >
+              <Maximize2 size={14} />
+              Maximize map
+            </button>
+          </div>
+
+          <div className="twin-graph-wrapper">
+            <ZoneGraph
+              scenario={scenario}
+              result={baselineResult}
+              selected={selectedZoneId}
+              onSelect={setSelectedZoneId}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Maximized Map Modal */}
+      {mapMaximized && scenario && baselineResult && (
+        <div className="maximized-map-modal-overlay" role="dialog" aria-modal="true" aria-label="Maximized Network Map">
+          <div className="maximized-map-modal-content card">
+            <div className="panel-heading">
+              <div>
+                <span className="eyebrow">FULL NETWORK TOPOLOGY</span>
+                <h3 className="section-title">Network Digital Twin · Maximized View</h3>
+                <p className="small muted">
+                  Baseline measurements over {baselineResult.horizon} h horizon.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="outline-button"
+                onClick={() => setMapMaximized(false)}
+                aria-label="Close maximized map"
+              >
+                <Minimize2 size={15} />
+                Minimize map
+              </button>
+            </div>
+            <div className="maximized-graph-body">
+              <ZoneGraph
+                scenario={scenario}
+                result={baselineResult}
+                selected={selectedZoneId}
+                onSelect={setSelectedZoneId}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Outcome Tiles */}
       <div className="step3-outcome-grid">
         <div className="step3-outcome-tile card">
@@ -309,7 +379,7 @@ export function Step3Review({
           <button
             type="button"
             className="text-link-button report-btn"
-            disabled={busy || !["completed", "infeasible", "rejected"].includes(run?.status || "")}
+            disabled={busy || !run}
             onClick={onOpenReport}
           >
             <FileText size={15} />

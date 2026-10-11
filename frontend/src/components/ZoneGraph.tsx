@@ -20,7 +20,7 @@ export function ZoneGraph({
   result: Result | null;
   selected: string;
   onSelect: (id: string) => void;
-  onConnection: (c: Connection) => void;
+  onConnection?: (c: Connection) => void;
   highlightZoneId?: string | null;
 }) {
   const last = result?.time_series.at(-1);
@@ -46,14 +46,14 @@ export function ZoneGraph({
           <g
             key={c.id}
             className="edge"
-            tabIndex={0}
-            role="button"
-            aria-label={`Edit connection ${c.id}`}
-            onClick={() => onConnection(c)}
+            tabIndex={onConnection ? 0 : undefined}
+            role={onConnection ? "button" : undefined}
+            aria-label={`${onConnection ? "Edit connection" : "Connection"} ${c.id}`}
+            onClick={() => onConnection?.(c)}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
-                onConnection(c);
+                onConnection?.(c);
               }
             }}
           >
@@ -104,7 +104,7 @@ export function ZoneGraph({
         const p = positions[z.id],
           state = last?.zones.find((s) => s.id === z.id);
         const ratio = (state?.storage ?? z.storage) / z.storage_capacity;
-        const isCritical = state?.condition === "Critical";
+        const isCritical = state?.condition === "Critical" || Boolean(state && state.storage < z.reserve);
         return (
           <g
             key={z.id}

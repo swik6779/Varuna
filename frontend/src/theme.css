@@ -7,7 +7,7 @@
   --bg: #f3f5ed;
   --card: #fffef9;
   --text: #202724;
-  --muted: #6d7873;
+  --muted: #49544f;
   --border: #c4cdc7;
   --blue: #1f6672;
   --soft: #e4eee9;
@@ -473,4 +473,7 @@ summary { color: #0b5d50; }
   .status-dot,
   .demo-label i,
   .command-signals i { animation: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .button:hover:not(:disabled), .sidebar nav button:hover { transform: none !important; }
 }

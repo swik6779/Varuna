@@ -1,8 +1,10 @@
-import React, { useState, useMemo } from "react";
-import { Play, ArrowRight, ShieldCheck, Thermometer, ChevronDown, ChevronRight, Waves } from "lucide-react";
+import React, { useState, useMemo, useEffect } from "react";
+import { Play, ArrowRight, ShieldCheck, Thermometer, ChevronDown, ChevronRight, Waves, RotateCcw } from "lucide-react";
 import type { Scenario, Result, Zone, Run } from "../../types";
 import { ZoneGraph } from "../ZoneGraph";
 import { StorageChart, FlowCharts } from "../Charts";
+import { reserveDescription } from "./measurements";
+import { Toggle } from "../ui";
 import { ExplainTooltip } from "./ExplainTooltip";
 import { number } from "../../lib/api";
 
@@ -22,6 +24,7 @@ export interface Step1SimulateProps {
   selectedZoneId: string;
   onSelectZone: (id: string) => void;
   onInvestigate: () => void;
+  preview?: { applied: Result; draft: Result } | null;
 }
 
 export function Step1Simulate({
@@ -40,6 +43,7 @@ export function Step1Simulate({
   selectedZoneId,
   onSelectZone,
   onInvestigate,
+  preview,
 }: Step1SimulateProps) {
   const [tableMode, setTableMode] = useState<"end" | "start">("end");
   const [zoneTableOpen, setZoneTableOpen] = useState(false);
@@ -48,6 +52,27 @@ export function Step1Simulate({
 
   const baselineResult = results.baseline;
   const isSimulationDone = Boolean(run && baselineResult);
+
+  // Auto-scroll downwards when simulation results arrive
+  useEffect(() => {
+    if (isSimulationDone) {
+      const timer = setTimeout(() => {
+        const resultsEl = document.querySelector(".step1-results-container");
+        if (resultsEl) {
+          resultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 120);
+      return () => clearTimeout(timer);
+    }
+  }, [isSimulationDone]);
+
+  const handleRunSimulation = () => {
+    onRunSimulation();
+    setTimeout(() => {
+      const el = document.querySelector(".step1-results-container") || document.querySelector(".run-simulation-btn");
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  };
 
   // Compute story strip parameters from applied scenario
   const storyInfo = useMemo(() => {
@@ -92,25 +117,7 @@ export function Step1Simulate({
   const zoneEFinalState = baselineResult?.time_series.at(-1)?.zones.find((z) => z.id === (zoneEDef?.id || "E"));
 
   // Derive "Time to reserve" replacement text
-  const timeToReserveText = useMemo(() => {
-    if (!zoneEDef || !baselineResult) return "—";
-    // Check if below reserve at start
-    if (zoneEDef.storage < zoneEDef.reserve) {
-      return `Already below reserve at start (${number(zoneEDef.storage, 0)} of ${number(zoneEDef.reserve, 0)} m³)`;
-    }
-    // Check if storage hits zero
-    const hitZeroStep = baselineResult.time_series.find((step) => {
-      const zs = step.zones.find((z) => z.id === zoneEDef.id);
-      return zs && zs.storage <= 0.05;
-    });
-    if (hitZeroStep) {
-      return `Storage runs out at about ${hitZeroStep.hour.toFixed(1)} h`;
-    }
-    if (zoneEFinalState && zoneEFinalState.storage >= zoneEDef.reserve) {
-      return "Reserve held";
-    }
-    return "Ends below reserve";
-  }, [zoneEDef, baselineResult, zoneEFinalState]);
+  const timeToReserveText = zoneEDef && baselineResult ? reserveDescription(zoneEDef, baselineResult) : "";
 
   return (
     <div className="step-simulate-flow">
@@ -128,16 +135,18 @@ export function Step1Simulate({
 
           <div className="step1-controls-card card">
             <div className="step1-controls-grid">
-              <label className="field scenario-select">
-                <span className="field-label-row">
+              <div className="step1-field-col">
+                <label className="step1-field-label" htmlFor="step1-scenario-select">
                   <span>Scenario</span>
                   <ExplainTooltip text="Pre-configured extreme event scenarios with deterministic baseline properties." />
-                </span>
+                </label>
                 <select
+                  id="step1-scenario-select"
                   aria-label="Scenario selection"
                   value={selectedScenarioId}
                   onChange={(e) => onSelectScenario(e.target.value)}
                   disabled={busy}
+                  className="step1-select-input"
                 >
                   {scenarios.map((s) => (
                     <option key={s.scenario_id} value={s.scenario_id}>
@@ -145,14 +154,14 @@ export function Step1Simulate({
                     </option>
                   ))}
                 </select>
-              </label>
+              </div>
 
-              <div className="horizon-control-group">
-                <span className="field-label-row">
+              <div className="step1-field-col">
+                <div className="step1-field-label">
                   <span>Forecast horizon</span>
                   <ExplainTooltip text="The forward simulation window over which mass balance is calculated (3, 6, or 12 hours)." />
-                </span>
-                <div className="segmented" role="group" aria-label="Forecast horizon">
+                </div>
+                <div className="segmented step1-segmented" role="group" aria-label="Forecast horizon">
                   {[3, 6, 12].map((h) => (
                     <button
                       key={h}
@@ -167,24 +176,37 @@ export function Step1Simulate({
                 </div>
               </div>
 
-              <div className="run-action-col">
-                <button
-                  type="button"
-                  className="primary-button run-simulation-btn"
-                  onClick={onRunSimulation}
-                  disabled={busy || !appliedScenario}
-                >
-                  <Play size={16} fill="currentColor" />
-                  Run Simulation
-                  <ArrowRight size={16} />
-                </button>
+              <div className="step1-field-col">
+                <div className="step1-field-label">
+                  <span>Agent investigation</span>
+                  <ExplainTooltip text="Toggle bounded AI investigation and automated response planning." />
+                </div>
                 <div className="agents-chip-row">
+                  <Toggle checked={agents} onCheckedChange={onSetAgents} label="Agents active" />
                   <span className="chip-agents-active">
                     <span className="live-dot" />
-                    Agents active: Bounded investigation & planning
+                    Agents {agents ? "active" : "off"}: Bounded planning
                   </span>
                 </div>
               </div>
+            </div>
+
+            <div className="step1-action-row">
+              <div className="step1-action-info">
+                <span className="step1-action-hint">
+                  15-min mass balance time steps · Deterministic baseline simulation outputs
+                </span>
+              </div>
+              <button
+                type="button"
+                className="primary-button run-simulation-btn"
+                onClick={handleRunSimulation}
+                disabled={busy || !appliedScenario || Boolean(run && ["queued", "simulating"].includes(run.status))}
+              >
+                <Play size={16} fill="currentColor" />
+                Run Simulation
+                <ArrowRight size={16} />
+              </button>
             </div>
 
             {/* Principles Chips */}
@@ -203,6 +225,36 @@ export function Step1Simulate({
       ) : (
         /* Results state after simulation completes */
         <div className="step1-results-container">
+          {/* Active Scenario and Re-run bar */}
+          <div className="step1-active-scenario-bar">
+            <div className="scenario-bar-meta">
+              <span>Applied scenario: <strong>{appliedScenario?.name} (v{appliedScenario?.scenario_version})</strong></span>
+              <span>·</span>
+              <span>Horizon: <strong>{baselineResult?.horizon} h</strong></span>
+              <span>·</span>
+              <span>Agents: <strong>{agents ? "active" : "off"}</strong></span>
+            </div>
+            <div className="scenario-bar-actions">
+              <button
+                type="button"
+                className="outline-button re-run-btn"
+                onClick={handleRunSimulation}
+                disabled={busy}
+              >
+                <RotateCcw size={14} />
+                Re-run simulation
+              </button>
+              <button
+                type="button"
+                className="secondary-button change-scenario-btn"
+                onClick={() => onSelectScenario(selectedScenarioId)}
+                disabled={busy}
+              >
+                Change scenario
+              </button>
+            </div>
+          </div>
+
           {/* Headline sentence computed from data */}
           <div className="step1-headline-banner">
             <Waves size={18} className="headline-icon" />
@@ -231,7 +283,6 @@ export function Step1Simulate({
                   result={baselineResult}
                   selected={selectedZoneId}
                   onSelect={onSelectZone}
-                  onConnection={() => {}}
                 />
               </div>
             )}
@@ -304,30 +355,31 @@ export function Step1Simulate({
                   {tableMode === "end" ? "Measured ending state" : "Applied initial conditions"}
                 </span>
               </div>
-
             </button>
 
-              <div
-                className="segmented table-mode-toggle"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button
-                  type="button"
-                  className={tableMode === "start" ? "chosen" : ""}
-                  onClick={() => setTableMode("start")}
-                >
-                  Start
-                </button>
-                <button
-                  type="button"
-                  className={tableMode === "end" ? "chosen" : ""}
-                  onClick={() => setTableMode("end")}
-                >
-                  End of {baselineResult?.horizon} h
-                </button>
-              </div>
             {zoneTableOpen && appliedScenario && (
               <div className="accordion-body">
+                <div className="table-toolbar">
+                  <div
+                    className="segmented table-mode-toggle"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      className={tableMode === "start" ? "chosen" : ""}
+                      onClick={() => setTableMode("start")}
+                    >
+                      Start
+                    </button>
+                    <button
+                      type="button"
+                      className={tableMode === "end" ? "chosen" : ""}
+                      onClick={() => setTableMode("end")}
+                    >
+                      End of {baselineResult?.horizon} h
+                    </button>
+                  </div>
+                </div>
                 <div className="table-responsive-wrapper">
                   <table className="wizard-data-table">
                     <thead>
@@ -459,24 +511,29 @@ export function Step1Simulate({
                     </button>
                   </div>
 
+                  <details><summary>View measured values · external supply</summary>
+                    <table className="wizard-data-table"><thead><tr><th>Hour</th><th>Without plan · gross external supply (m³/h)</th></tr></thead><tbody>
+                    {baselineResult.time_series.map(step => <tr key={step.hour}><td>{step.hour} h</td><td>{number((step.zones.find(z => z.id === selectedZoneId)?.external ?? 0) / baselineResult.step_hours, 1)}</td></tr>)}
+                    </tbody></table>
+                  </details>
                   <div className="drill-tab-content">
                     {drillTab === "storage" && (
                       <div className="drill-chart-pane">
                         <StorageChart
-                          baseline={baselineResult}
-                          comparison={null}
+                          baseline={preview?.applied || baselineResult}
+                          comparison={preview?.draft || null}
                           zone={zoneEDef}
-                          label="Without plan"
+                          label="Draft preview"
                         />
                       </div>
                     )}
                     {drillTab === "demand" && (
                       <div className="drill-chart-pane">
                         <FlowCharts
-                          baseline={baselineResult}
-                          comparison={null}
+                          baseline={preview?.applied || baselineResult}
+                          comparison={preview?.draft || null}
                           zoneId={selectedZoneId}
-                          label="Without plan"
+                          label="Draft preview"
                           chartFilter="demand"
                         />
                       </div>
@@ -484,10 +541,10 @@ export function Step1Simulate({
                     {drillTab === "shortage" && (
                       <div className="drill-chart-pane">
                         <FlowCharts
-                          baseline={baselineResult}
-                          comparison={null}
+                          baseline={preview?.applied || baselineResult}
+                          comparison={preview?.draft || null}
                           zoneId={selectedZoneId}
-                          label="Without plan"
+                          label="Draft preview"
                           chartFilter="shortage"
                         />
                       </div>
@@ -500,6 +557,16 @@ export function Step1Simulate({
 
           {/* Primary Action Button: Investigate */}
           <div className="step-stage-footer-actions">
+            <div className="action-left-buttons">
+              <button
+                type="button"
+                className="outline-button"
+                onClick={() => onSelectScenario(selectedScenarioId)}
+                disabled={busy}
+              >
+                Change scenario
+              </button>
+            </div>
             <button
               type="button"
               className="primary-button stage-next-button pulse-button"

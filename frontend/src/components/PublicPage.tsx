@@ -230,8 +230,8 @@ export function PublicPage() {
       </section>
       <p className="small muted">
         {stations.filter((s) => s.type === "cooling").length} demo cooling
-        centers currently eligible. Stations follow Asia/Kolkata operating
-        hours. Water simulation decisions do not determine this guidance.
+        centers currently eligible. Designated emergency cooling centers operate
+        24/7 for heat relief. Water simulation decisions do not determine this guidance.
       </p>
     </main>
   );

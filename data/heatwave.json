@@ -2,7 +2,7 @@
   "scenario_id": "heatwave",
   "scenario_version": 1,
   "name": "Heatwave demand surge",
-  "description": "Explicit 1.45× demand multiplier; temperature is context only.",
+  "description": "Explicit 1.45ï¿½ demand multiplier; temperature is context only.",
   "synthetic": true,
   "seed": 42,
   "zones": [
@@ -259,8 +259,8 @@
         77.58
       ],
       "type": "cooling",
-      "opens": 6,
-      "closes": 22,
+      "opens": 0,
+      "closes": 24,
       "timezone": "Asia/Kolkata",
       "open": true,
       "accessible": true,
@@ -303,8 +303,8 @@
         77.608
       ],
       "type": "cooling",
-      "opens": 6,
-      "closes": 22,
+      "opens": 0,
+      "closes": 24,
       "timezone": "Asia/Kolkata",
       "open": true,
       "accessible": true,
@@ -347,8 +347,8 @@
         77.594
       ],
       "type": "cooling",
-      "opens": 6,
-      "closes": 22,
+      "opens": 0,
+      "closes": 24,
       "timezone": "Asia/Kolkata",
       "open": true,
       "accessible": true,

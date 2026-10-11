@@ -2,7 +2,7 @@ import type { RunEvent } from "../../types";
 
 export type WizardStepId = 1 | 2 | 3 | 4;
 
-export type StepState = "active" | "completed" | "locked" | "needs-you";
+export type StepState = "active" | "completed" | "locked" | "needs-you" | "available";
 
 export interface StepConfig {
   id: WizardStepId;

@@ -3,6 +3,8 @@ import { CheckCircle2, Download, Upload, FileText, RotateCcw, ChevronDown, Chevr
 import type { Result, Scenario, Plan, Run } from "../../types";
 import { StorageChart, FlowCharts } from "../Charts";
 import { ZoneGraph } from "../ZoneGraph";
+import { reserveDescription } from "./measurements";
+import { formatEventTitle } from "./useRunEvents";
 import { ExplainTooltip } from "./ExplainTooltip";
 import { number, downloadJson } from "../../lib/api";
 
@@ -170,6 +172,10 @@ export function Step4Verify({
         </p>
       </div>
 
+      <div className="card verification-event-list">{events.filter(event => ["decision", "outcome", "report"].includes(event.kind)).map(event => {
+        const label = formatEventTitle(event);
+        return <p key={event.seq}><strong>{event.kind === "decision" ? `Operator approved plan v${planVersion}` : label.title}</strong><br/><span className="small muted">{label.subtitle}</span></p>;
+      })}</div>
       {/* Hero Chart: Zone E storage (Without plan vs With approved plan) */}
       {zoneE && baselineResult && (
         <div className="step4-hero-chart-card card">
@@ -180,6 +186,7 @@ export function Step4Verify({
               <p className="small muted">
                 Without plan → With approved plan · {baselineResult.horizon} h horizon.
               </p>
+              {approvedResult && <p className="small muted">With approved plan: {reserveDescription(zoneE, approvedResult)}</p>}
             </div>
 
             <div className="drill-tabs-nav" role="tablist">
@@ -276,7 +283,6 @@ export function Step4Verify({
               result={twinViewMode === "approved" ? approvedResult || baselineResult : baselineResult}
               selected="E"
               onSelect={onSelectZone}
-              onConnection={() => {}}
             />
           </div>
         </div>

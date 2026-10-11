@@ -52,6 +52,13 @@ export function Step2Investigate({
       </div>
 
       <div className="step-stage-footer-actions">
+        <div className="stage-footer-status">
+          {isAdvanceEnabled ? (
+            <span className="footer-status-ready">Investigation complete · Response plan ready for review</span>
+          ) : (
+            <span className="footer-status-pending">Evaluating recovery options against critical-service constraints...</span>
+          )}
+        </div>
         <button
           type="button"
           className={`primary-button stage-next-button ${

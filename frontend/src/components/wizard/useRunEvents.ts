@@ -46,13 +46,13 @@ function extractDetailLines(event: RunEvent): string[] {
   return lines;
 }
 
-function formatEventTitle(event: RunEvent) {
+export function formatEventTitle(event: RunEvent) {
   const tool = (event.detail?.tool as string) || "";
   const msg = event.message || "";
 
   if (event.kind === "decision") {
     return {
-      title: "Operator approved plan v1",
+      title: event.message,
       subtitle: "Your decision is recorded",
     };
   }
